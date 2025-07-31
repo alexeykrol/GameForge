@@ -27,8 +27,9 @@ const GameBoard: React.FC = () => {
   const { 
     gameState, 
     selectedCell, 
-    animatingCells,
+    animatingGems,
     handleCellClick,
+    updateAnimations,
     isValidMove
   } = useMatch3();
   
@@ -129,7 +130,7 @@ const GameBoard: React.FC = () => {
       ctx.stroke();
     }
 
-    // Draw gems
+    // Draw regular gems
     for (let row = 0; row < BOARD_SIZE; row++) {
       for (let col = 0; col < BOARD_SIZE; col++) {
         // Safety check for row existence
@@ -145,36 +146,64 @@ const GameBoard: React.FC = () => {
             selectedCell.row === row && 
             selectedCell.col === col;
           
-          // Check if this cell is animating
-          const isAnimating = animatingCells.some(
-            cell => cell.row === row && cell.col === col
+          // Check if this gem is animating (skip if disappearing or falling)
+          const animatingGem = animatingGems.find(
+            gem => gem.row === row && gem.col === col
           );
           
-          const scale = isSelected ? 1.1 : isAnimating ? 0.9 : 1;
-          const color = GEM_COLORS[gemType];
-          
-          drawGem(ctx, x, y, color, scale);
-          
-          // Draw selection highlight
-          if (isSelected) {
-            ctx.strokeStyle = '#ffff00';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+          if (!animatingGem) {
+            const scale = isSelected ? 1.1 : 1;
+            const color = GEM_COLORS[gemType];
+            
+            drawGem(ctx, x, y, color, scale);
+            
+            // Draw selection highlight
+            if (isSelected) {
+              ctx.strokeStyle = '#ffff00';
+              ctx.lineWidth = 3;
+              ctx.strokeRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+            }
           }
         }
       }
     }
+
+    // Draw animating gems
+    animatingGems.forEach(animGem => {
+      const color = GEM_COLORS[animGem.gemType];
+      const x = animGem.col * CELL_SIZE;
+      
+      if (animGem.type === 'disappearing') {
+        // Shrinking and fading animation
+        const scale = 1 - animGem.progress;
+        const alpha = (1 - animGem.progress) * 0.8;
+        
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        drawGem(ctx, x, animGem.row * CELL_SIZE, color, scale);
+        ctx.restore();
+        
+      } else if (animGem.type === 'falling') {
+        // Falling animation from fromRow to row
+        const fromY = (animGem.fromRow || animGem.row) * CELL_SIZE;
+        const toY = animGem.row * CELL_SIZE;
+        const currentY = fromY + (toY - fromY) * animGem.progress;
+        
+        drawGem(ctx, x, currentY, color, 1);
+      }
+    });
 
     // Update and draw particles
     if (particleSystemRef.current) {
       particleSystemRef.current.update();
       particleSystemRef.current.draw(ctx);
     }
-  }, [gameState, selectedCell, animatingCells, drawGem]);
+  }, [gameState, selectedCell, animatingGems, drawGem]);
 
   // Animation loop
   useEffect(() => {
     const animate = () => {
+      updateAnimations();
       render();
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -185,7 +214,7 @@ const GameBoard: React.FC = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [render]);
+  }, [render, updateAnimations]);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
