@@ -8,6 +8,7 @@ import {
   fillEmptySpaces,
   hasValidMoves 
 } from '../gameLogic';
+import { ANIMATION_CONFIG, AnimationHelpers } from '../animationConfig';
 
 export interface Cell {
   row: number;
@@ -70,7 +71,7 @@ export const useMatch3 = create<Match3State>()(
 
       const updatedGems = state.animatingGems.map(gem => ({
         ...gem,
-        progress: Math.min(gem.progress + 0.015, 1.0) // Much slower animation
+        progress: Math.min(gem.progress + AnimationHelpers.getProgressIncrement(), 1.0)
       }));
 
       set({ animatingGems: updatedGems });
@@ -134,7 +135,7 @@ export const useMatch3 = create<Match3State>()(
           // Schedule the completion of matches after animation
           setTimeout(() => {
             get().completeMatches(newBoard, matches);
-          }, 1500); // 1.5 seconds for disappearing animation
+          }, ANIMATION_CONFIG.DISAPPEAR_DURATION);
           
           return true;
         } else {
@@ -221,7 +222,7 @@ export const useMatch3 = create<Match3State>()(
               isGameOver: gameOver
             });
           }
-        }, 2000); // Wait for falling animation (2 seconds)
+        }, ANIMATION_CONFIG.FALLING_DURATION);
       } else {
         // No falling animation needed, check for more matches immediately
         const moreMatches = findMatches(currentBoard);
@@ -258,7 +259,7 @@ export const useMatch3 = create<Match3State>()(
       // Schedule the completion of matches after animation
       setTimeout(() => {
         get().completeMatches(board, matches);
-      }, 1500);
+      }, ANIMATION_CONFIG.DISAPPEAR_DURATION);
     },
 
     restartGame: () => {

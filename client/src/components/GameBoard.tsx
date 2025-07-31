@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { useMatch3 } from '../lib/stores/useMatch3';
 import { useAudio } from '../lib/stores/useAudio';
 import { ParticleSystem } from '../lib/particleSystem';
+import { ANIMATION_CONFIG, AnimationHelpers } from '../lib/animationConfig';
 
 const BOARD_SIZE = 8;
 const CELL_SIZE = 50;
@@ -174,9 +175,10 @@ const GameBoard: React.FC = () => {
       const x = animGem.col * CELL_SIZE;
       
       if (animGem.type === 'disappearing') {
-        // Shrinking and fading animation
-        const scale = 1 - animGem.progress;
-        const alpha = (1 - animGem.progress) * 0.8;
+        // Shrinking and fading animation with smooth easing
+        const easedProgress = AnimationHelpers.easeIn(animGem.progress);
+        const scale = Math.max(1 - easedProgress, ANIMATION_CONFIG.EFFECTS.MIN_DISAPPEAR_SCALE);
+        const alpha = Math.max((1 - easedProgress) * 0.9, ANIMATION_CONFIG.EFFECTS.MIN_DISAPPEAR_ALPHA);
         
         ctx.save();
         ctx.globalAlpha = alpha;
@@ -184,10 +186,19 @@ const GameBoard: React.FC = () => {
         ctx.restore();
         
       } else if (animGem.type === 'falling') {
-        // Falling animation from fromRow to row
+        // Falling animation from fromRow to row with bounce effect
         const fromY = (animGem.fromRow || animGem.row) * CELL_SIZE;
         const toY = animGem.row * CELL_SIZE;
-        const currentY = fromY + (toY - fromY) * animGem.progress;
+        const easedProgress = AnimationHelpers.easeOut(animGem.progress);
+        
+        // Add subtle bounce effect
+        let bounceOffset = 0;
+        if (easedProgress > 0.8) {
+          const bouncePhase = (easedProgress - 0.8) / 0.2;
+          bounceOffset = Math.sin(bouncePhase * Math.PI) * ANIMATION_CONFIG.EFFECTS.BOUNCE_EFFECT * CELL_SIZE;
+        }
+        
+        const currentY = fromY + (toY - fromY) * easedProgress + bounceOffset;
         
         drawGem(ctx, x, currentY, color, 1);
       }
@@ -221,7 +232,7 @@ const GameBoard: React.FC = () => {
 
     const interval = setInterval(() => {
       updateAnimations();
-    }, 16); // ~60fps
+    }, ANIMATION_CONFIG.ANIMATION_FRAME_RATE);
 
     return () => clearInterval(interval);
   }, [animatingGems.length > 0, updateAnimations]);
