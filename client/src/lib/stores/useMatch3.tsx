@@ -37,7 +37,7 @@ interface Match3State {
   restartGame: () => void;
   isValidMove: (from: Cell, to: Cell) => boolean;
   updateAnimations: () => void;
-  processAnimatedMatches: (board: (number | null)[][], matches: Cell[]) => Promise<void>;
+  completeMatches: (board: (number | null)[][], matches: Cell[]) => void;
 }
 
 const BOARD_SIZE = 8;
@@ -65,20 +65,14 @@ export const useMatch3 = create<Match3State>()(
 
     updateAnimations: () => {
       const state = get();
+      if (state.animatingGems.length === 0) return;
+
       const updatedGems = state.animatingGems.map(gem => ({
         ...gem,
-        progress: Math.min(gem.progress + 0.05, 1.0)
-      })).filter(gem => gem.progress < 1.0);
+        progress: Math.min(gem.progress + 0.08, 1.0)
+      }));
 
-      if (updatedGems.length !== state.animatingGems.length) {
-        // Some animations finished
-        set({
-          animatingGems: updatedGems,
-          isAnimating: updatedGems.length > 0
-        });
-      } else if (updatedGems.length > 0) {
-        set({ animatingGems: updatedGems });
-      }
+      set({ animatingGems: updatedGems });
     },
 
     isValidMove: (from: Cell, to: Cell) => {
@@ -120,9 +114,27 @@ export const useMatch3 = create<Match3State>()(
         const matches = findMatches(newBoard);
         
         if (matches.length > 0) {
-          // Start animated sequence
-          state.processAnimatedMatches(newBoard, matches);
-          set({ selectedCell: null });
+          // Start disappearing animation for matched gems
+          const disappearingGems: AnimatingGem[] = matches.map(match => ({
+            row: match.row,
+            col: match.col,
+            type: 'disappearing' as const,
+            progress: 0,
+            gemType: newBoard[match.row][match.col] || 0
+          }));
+
+          set({ 
+            gameState: newBoard,
+            animatingGems: disappearingGems, 
+            isAnimating: true,
+            selectedCell: null
+          });
+          
+          // Schedule the completion of matches after animation
+          setTimeout(() => {
+            get().completeMatches(newBoard, matches);
+          }, 500); // 500ms for disappearing animation
+          
           return true;
         } else {
           // Invalid move - revert the swap
@@ -136,97 +148,27 @@ export const useMatch3 = create<Match3State>()(
       }
     },
 
-    processAnimatedMatches: async (board: (number | null)[][], matches: Cell[]) => {
+    completeMatches: (board: (number | null)[][], matches: Cell[]) => {
       const state = get();
       let currentBoard = [...board.map(row => [...row])];
       let totalScore = state.score;
 
-      // Start disappearing animation for matched gems
-      const disappearingGems: AnimatingGem[] = matches.map(match => ({
-        row: match.row,
-        col: match.col,
-        type: 'disappearing' as const,
-        progress: 0,
-        gemType: currentBoard[match.row][match.col] || 0
-      }));
-
-      set({ 
-        animatingGems: disappearingGems, 
-        isAnimating: true,
-        gameState: currentBoard 
-      });
-
-      // Wait for disappearing animation to complete
-      await new Promise(resolve => {
-        const checkProgress = () => {
-          const state = get();
-          const allFinished = state.animatingGems.every(gem => gem.progress >= 1.0);
-          if (allFinished) {
-            resolve(void 0);
-          } else {
-            requestAnimationFrame(checkProgress);
-          }
-        };
-        checkProgress();
-      });
-
-      // Process cascading matches with animation
+      // Process all cascading matches
       while (true) {
         const currentMatches = findMatches(currentBoard);
         if (currentMatches.length === 0) break;
         
+        // Calculate score for this round of matches  
         totalScore += currentMatches.length * 10;
+        
+        // Remove matched gems
         currentBoard = removeMatches(currentBoard, currentMatches);
         
-        // Animate falling gems
-        const fallingGems: AnimatingGem[] = [];
-        const newBoard = dropGems(currentBoard);
+        // Drop gems down
+        currentBoard = dropGems(currentBoard);
         
-        // Find gems that moved and create falling animations
-        for (let col = 0; col < BOARD_SIZE; col++) {
-          for (let row = BOARD_SIZE - 1; row >= 0; row--) {
-            if (currentBoard[row][col] !== null && newBoard[row][col] === null) {
-              // Find where this gem ended up
-              for (let newRow = row + 1; newRow < BOARD_SIZE; newRow++) {
-                if (newBoard[newRow][col] === currentBoard[row][col]) {
-                  fallingGems.push({
-                    row: newRow,
-                    col,
-                    type: 'falling' as const,
-                    progress: 0,
-                    fromRow: row,
-                    gemType: currentBoard[row][col] || 0
-                  });
-                  break;
-                }
-              }
-            }
-          }
-        }
-        
-        currentBoard = newBoard;
+        // Fill empty spaces with new gems
         currentBoard = fillEmptySpaces(currentBoard);
-        
-        if (fallingGems.length > 0) {
-          set({ 
-            animatingGems: fallingGems,
-            gameState: currentBoard 
-          });
-          
-          // Wait for falling animation
-          await new Promise(resolve => {
-            const checkProgress = () => {
-              const state = get();
-              const allFinished = state.animatingGems.every(gem => gem.progress >= 1.0);
-              if (allFinished) {
-                resolve(void 0);
-              } else {
-                requestAnimationFrame(checkProgress);
-              }
-            };
-            checkProgress();
-          });
-        }
       }
 
       // Check for game over

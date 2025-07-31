@@ -203,7 +203,6 @@ const GameBoard: React.FC = () => {
   // Animation loop
   useEffect(() => {
     const animate = () => {
-      updateAnimations();
       render();
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -214,7 +213,18 @@ const GameBoard: React.FC = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [render, updateAnimations]);
+  }, [render]);
+
+  // Animation update for gems
+  useEffect(() => {
+    if (animatingGems.length === 0) return;
+
+    const interval = setInterval(() => {
+      updateAnimations();
+    }, 16); // ~60fps
+
+    return () => clearInterval(interval);
+  }, [animatingGems.length > 0, updateAnimations]);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
