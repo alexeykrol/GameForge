@@ -204,6 +204,19 @@ const GameBoard: React.FC = () => {
         const currentY = fromY + (toY - fromY) * easedProgress + bounceOffset;
         
         drawGem(ctx, x, currentY, color, 1);
+        
+      } else if (animGem.type === 'swapping') {
+        // Swapping animation between two positions
+        const fromX = (animGem.fromCol || animGem.col) * CELL_SIZE;
+        const fromY = (animGem.fromRow || animGem.row) * CELL_SIZE;
+        const toX = (animGem.toCol || animGem.col) * CELL_SIZE;
+        const toY = (animGem.toRow || animGem.row) * CELL_SIZE;
+        
+        const easedProgress = AnimationHelpers.easeInOut(animGem.progress);
+        const currentX = fromX + (toX - fromX) * easedProgress;
+        const currentY = fromY + (toY - fromY) * easedProgress;
+        
+        drawGem(ctx, currentX, currentY, color, 1);
       }
     });
 

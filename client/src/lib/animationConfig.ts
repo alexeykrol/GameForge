@@ -18,9 +18,10 @@ const SPEED_MULTIPLIERS = {
 
 // Функция для получения текущей конфигурации анимации на основе настроек
 export const getAnimationConfig = (disappearSpeed: number = 3, fallingSpeed: number = 3) => ({
-  // Продолжительность в миллисекундах (базовая продолжительность / мультипликатор скорости)
-  DISAPPEAR_DURATION: Math.round(BASE_DISAPPEAR_DURATION / SPEED_MULTIPLIERS[disappearSpeed as keyof typeof SPEED_MULTIPLIERS]),
-  FALLING_DURATION: Math.round(BASE_FALLING_DURATION / SPEED_MULTIPLIERS[fallingSpeed as keyof typeof SPEED_MULTIPLIERS]),
+  // Продолжительность в миллисекундах - короткие, четкие анимации как в референсе
+  SWAP_DURATION: Math.round(200 / SPEED_MULTIPLIERS[disappearSpeed as keyof typeof SPEED_MULTIPLIERS]),
+  DISAPPEAR_DURATION: Math.round(300 / SPEED_MULTIPLIERS[disappearSpeed as keyof typeof SPEED_MULTIPLIERS]),
+  FALLING_DURATION: Math.round(200 / SPEED_MULTIPLIERS[fallingSpeed as keyof typeof SPEED_MULTIPLIERS]),
   
   // Скорость обновления анимации (прогресс за кадр)
   ANIMATION_SPEED: 0.025,

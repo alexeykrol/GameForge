@@ -19,9 +19,12 @@ export interface Cell {
 export interface AnimatingGem {
   row: number;
   col: number;
-  type: 'disappearing' | 'falling';
+  type: 'disappearing' | 'falling' | 'swapping';
   progress: number;
   fromRow?: number;
+  fromCol?: number;
+  toRow?: number;
+  toCol?: number;
   gemType: number;
 }
 
@@ -31,6 +34,7 @@ interface Match3State {
   selectedCell: Cell | null;
   animatingGems: AnimatingGem[];
   isAnimating: boolean;
+  isProcessing: boolean; // блокирует ввод во время анимаций
   isGameOver: boolean;
   
   // Actions
@@ -39,6 +43,7 @@ interface Match3State {
   restartGame: () => void;
   isValidMove: (from: Cell, to: Cell) => boolean;
   updateAnimations: () => void;
+  swapGems: (fromCell: Cell, toCell: Cell, checkMatch: boolean) => void;
   completeMatches: (board: (number | null)[][], matches: Cell[]) => void;
   startDisappearingAnimation: (board: (number | null)[][], matches: Cell[], currentScore: number) => void;
 }
@@ -52,6 +57,7 @@ export const useMatch3 = create<Match3State>()(
     selectedCell: null,
     animatingGems: [],
     isAnimating: false,
+    isProcessing: false,
     isGameOver: false,
 
     initializeGame: () => {
@@ -89,10 +95,10 @@ export const useMatch3 = create<Match3State>()(
 
     handleCellClick: (row: number, col: number) => {
       const state = get();
-      const { gameState, selectedCell, isValidMove, isAnimating } = state;
+      const { gameState, selectedCell, isValidMove, isProcessing } = state;
       
-      // Don't allow clicks during animations
-      if (isAnimating) return false;
+      // Don't allow clicks during processing (animations)
+      if (isProcessing) return false;
       
       // If no cell is selected, select this one
       if (!selectedCell) {
@@ -108,44 +114,8 @@ export const useMatch3 = create<Match3State>()(
       
       // If clicking an adjacent cell, try to swap
       if (isValidMove(selectedCell, { row, col })) {
-        const newBoard = gameState.map(row => [...row]);
-        
-        // Swap gems
-        const temp = newBoard[selectedCell.row][selectedCell.col];
-        newBoard[selectedCell.row][selectedCell.col] = newBoard[row][col];
-        newBoard[row][col] = temp;
-        
-        // Check if this creates any matches
-        const matches = findMatches(newBoard);
-        
-        if (matches.length > 0) {
-          // Start disappearing animation for matched gems
-          const disappearingGems: AnimatingGem[] = matches.map(match => ({
-            row: match.row,
-            col: match.col,
-            type: 'disappearing' as const,
-            progress: 0,
-            gemType: newBoard[match.row][match.col] || 0
-          }));
-
-          set({ 
-            gameState: newBoard,
-            animatingGems: disappearingGems, 
-            isAnimating: true,
-            selectedCell: null
-          });
-          
-          // Schedule the completion of matches after animation
-          setTimeout(() => {
-            get().completeMatches(newBoard, matches);
-          }, getAnimationConfig(useGame.getState().settings.disappearSpeed, useGame.getState().settings.fallingSpeed).DISAPPEAR_DURATION);
-          
-          return true;
-        } else {
-          // Invalid move - revert the swap
-          set({ selectedCell: null });
-          return false;
-        }
+        get().swapGems(selectedCell, { row, col }, true);
+        return true;
       } else {
         // Not adjacent - select the new cell
         set({ selectedCell: { row, col } });
@@ -223,6 +193,7 @@ export const useMatch3 = create<Match3State>()(
             set({
               animatingGems: [],
               isAnimating: false,
+              isProcessing: false,
               isGameOver: gameOver
             });
           }
@@ -239,6 +210,7 @@ export const useMatch3 = create<Match3State>()(
             score: totalScore,
             animatingGems: [],
             isAnimating: false,
+            isProcessing: false,
             isGameOver: gameOver
           });
         }
@@ -264,6 +236,71 @@ export const useMatch3 = create<Match3State>()(
       setTimeout(() => {
         get().completeMatches(board, matches);
       }, getAnimationConfig(useGame.getState().settings.disappearSpeed, useGame.getState().settings.fallingSpeed).DISAPPEAR_DURATION);
+    },
+
+    swapGems: (fromCell: Cell, toCell: Cell, checkMatch: boolean) => {
+      set({ isProcessing: true, selectedCell: null });
+      
+      // Create copy of board and perform swap
+      const state = get();
+      const newBoard = state.gameState.map(row => [...row]);
+      const temp = newBoard[fromCell.row][fromCell.col];
+      newBoard[fromCell.row][fromCell.col] = newBoard[toCell.row][toCell.col];
+      newBoard[toCell.row][toCell.col] = temp;
+
+      // Create swapping animations
+      const swappingGems: AnimatingGem[] = [
+        {
+          row: toCell.row,
+          col: toCell.col,
+          type: 'swapping',
+          progress: 0,
+          fromRow: fromCell.row,
+          fromCol: fromCell.col,
+          toRow: toCell.row,
+          toCol: toCell.col,
+          gemType: state.gameState[fromCell.row][fromCell.col] || 0
+        },
+        {
+          row: fromCell.row,
+          col: fromCell.col,
+          type: 'swapping',
+          progress: 0,
+          fromRow: toCell.row,
+          fromCol: toCell.col,
+          toRow: fromCell.row,
+          toCol: fromCell.col,
+          gemType: state.gameState[toCell.row][toCell.col] || 0
+        }
+      ];
+
+      set({
+        gameState: newBoard,
+        animatingGems: swappingGems,
+        isAnimating: true
+      });
+
+      // After swap animation completes
+      const settings = useGame.getState().settings;
+      setTimeout(() => {
+        if (checkMatch) {
+          const matches = findMatches(newBoard);
+          if (matches.length > 0) {
+            // Valid move - start disappearing animation
+            get().startDisappearingAnimation(newBoard, matches, state.score);
+          } else {
+            // Invalid move - swap back
+            get().swapGems(toCell, fromCell, false);
+          }
+        } else {
+          // Swap back complete
+          set({
+            animatingGems: [],
+            isAnimating: false,
+            isProcessing: false
+          });
+        }
+      }, getAnimationConfig(settings.disappearSpeed, settings.fallingSpeed).SWAP_DURATION);
     },
 
     restartGame: () => {
