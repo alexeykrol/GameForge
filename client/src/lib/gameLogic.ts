@@ -12,16 +12,21 @@ const GEM_TYPES = 7;
 
 /**
  * Creates an initial board with no immediate matches
+ * Difficulty affects the number of gem types used
  */
-export function createInitialBoard(size: number): (number | null)[][] {
+export function createInitialBoard(size: number, difficulty: number = 2): (number | null)[][] {
   const board: (number | null)[][] = [];
+  
+  // Adjust number of gem types based on difficulty
+  // Easy (1): 5 types = more matches, Medium (2): 6 types, Hard (3): 7 types = fewer matches
+  const gemTypesForDifficulty = difficulty === 1 ? 5 : difficulty === 2 ? 6 : 7;
   
   for (let row = 0; row < size; row++) {
     board[row] = [];
     for (let col = 0; col < size; col++) {
       let gemType;
       do {
-        gemType = Math.floor(Math.random() * GEM_TYPES);
+        gemType = Math.floor(Math.random() * gemTypesForDifficulty);
       } while (
         // Avoid horizontal matches
         (col >= 2 && 
@@ -147,14 +152,17 @@ export function dropGems(board: (number | null)[][]): (number | null)[][] {
 /**
  * Fills empty spaces with new random gems
  */
-export function fillEmptySpaces(board: (number | null)[][]): (number | null)[][] {
+export function fillEmptySpaces(board: (number | null)[][], difficulty: number = 2): (number | null)[][] {
   const newBoard = board.map(row => [...row]);
   const size = board.length;
+  
+  // Use same gem types as difficulty setting
+  const gemTypesForDifficulty = difficulty === 1 ? 5 : difficulty === 2 ? 6 : 7;
   
   for (let col = 0; col < size; col++) {
     for (let row = 0; row < size; row++) {
       if (newBoard[row][col] === null) {
-        newBoard[row][col] = Math.floor(Math.random() * GEM_TYPES);
+        newBoard[row][col] = Math.floor(Math.random() * gemTypesForDifficulty);
       }
     }
   }

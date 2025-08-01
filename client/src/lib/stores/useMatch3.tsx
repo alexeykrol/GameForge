@@ -8,7 +8,8 @@ import {
   fillEmptySpaces,
   hasValidMoves 
 } from '../gameLogic';
-import { ANIMATION_CONFIG, AnimationHelpers } from '../animationConfig';
+import { getAnimationConfig, AnimationHelpers } from '../animationConfig';
+import { useGame } from './useGame';
 
 export interface Cell {
   row: number;
@@ -54,7 +55,9 @@ export const useMatch3 = create<Match3State>()(
     isGameOver: false,
 
     initializeGame: () => {
-      const board = createInitialBoard(BOARD_SIZE);
+      // Get current difficulty setting from useGame store
+      const gameState = useGame.getState();
+      const board = createInitialBoard(BOARD_SIZE, gameState.settings.difficulty);
       set({
         gameState: board,
         score: 0,
@@ -135,7 +138,7 @@ export const useMatch3 = create<Match3State>()(
           // Schedule the completion of matches after animation
           setTimeout(() => {
             get().completeMatches(newBoard, matches);
-          }, ANIMATION_CONFIG.DISAPPEAR_DURATION);
+          }, getAnimationConfig(useGame.getState().settings.disappearSpeed, useGame.getState().settings.fallingSpeed).DISAPPEAR_DURATION);
           
           return true;
         } else {
@@ -194,8 +197,9 @@ export const useMatch3 = create<Match3State>()(
       }
       
       // Apply the drop and fill with new gems
+      const gameSettings = useGame.getState().settings;
       currentBoard = boardAfterDrop;
-      currentBoard = fillEmptySpaces(currentBoard);
+      currentBoard = fillEmptySpaces(currentBoard, gameSettings.difficulty);
       
       if (fallingGems.length > 0) {
         // Start falling animation
@@ -222,7 +226,7 @@ export const useMatch3 = create<Match3State>()(
               isGameOver: gameOver
             });
           }
-        }, ANIMATION_CONFIG.FALLING_DURATION);
+        }, getAnimationConfig(useGame.getState().settings.disappearSpeed, useGame.getState().settings.fallingSpeed).FALLING_DURATION);
       } else {
         // No falling animation needed, check for more matches immediately
         const moreMatches = findMatches(currentBoard);
@@ -259,11 +263,13 @@ export const useMatch3 = create<Match3State>()(
       // Schedule the completion of matches after animation
       setTimeout(() => {
         get().completeMatches(board, matches);
-      }, ANIMATION_CONFIG.DISAPPEAR_DURATION);
+      }, getAnimationConfig(useGame.getState().settings.disappearSpeed, useGame.getState().settings.fallingSpeed).DISAPPEAR_DURATION);
     },
 
     restartGame: () => {
-      const board = createInitialBoard(BOARD_SIZE);
+      // Get current difficulty setting from useGame store
+      const gameSettings = useGame.getState().settings;
+      const board = createInitialBoard(BOARD_SIZE, gameSettings.difficulty);
       set({
         gameState: board,
         score: 0,

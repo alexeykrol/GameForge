@@ -2,7 +2,8 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { useMatch3 } from '../lib/stores/useMatch3';
 import { useAudio } from '../lib/stores/useAudio';
 import { ParticleSystem } from '../lib/particleSystem';
-import { ANIMATION_CONFIG, AnimationHelpers } from '../lib/animationConfig';
+import { getAnimationConfig, AnimationHelpers } from '../lib/animationConfig';
+import { useGame } from '../lib/stores/useGame';
 
 const BOARD_SIZE = 8;
 const CELL_SIZE = 50;
@@ -34,6 +35,7 @@ const GameBoard: React.FC = () => {
     isValidMove
   } = useMatch3();
   
+  const { settings } = useGame();
   const { playHit, playSuccess } = useAudio();
 
   // Initialize particle system
@@ -177,8 +179,9 @@ const GameBoard: React.FC = () => {
       if (animGem.type === 'disappearing') {
         // Shrinking and fading animation with smooth easing
         const easedProgress = AnimationHelpers.easeIn(animGem.progress);
-        const scale = Math.max(1 - easedProgress, ANIMATION_CONFIG.EFFECTS.MIN_DISAPPEAR_SCALE);
-        const alpha = Math.max((1 - easedProgress) * 0.9, ANIMATION_CONFIG.EFFECTS.MIN_DISAPPEAR_ALPHA);
+        const config = getAnimationConfig(settings.disappearSpeed, settings.fallingSpeed);
+        const scale = Math.max(1 - easedProgress, config.EFFECTS.MIN_DISAPPEAR_SCALE);
+        const alpha = Math.max((1 - easedProgress) * 0.9, config.EFFECTS.MIN_DISAPPEAR_ALPHA);
         
         ctx.save();
         ctx.globalAlpha = alpha;
@@ -195,7 +198,7 @@ const GameBoard: React.FC = () => {
         let bounceOffset = 0;
         if (easedProgress > 0.8) {
           const bouncePhase = (easedProgress - 0.8) / 0.2;
-          bounceOffset = Math.sin(bouncePhase * Math.PI) * ANIMATION_CONFIG.EFFECTS.BOUNCE_EFFECT * CELL_SIZE;
+          bounceOffset = Math.sin(bouncePhase * Math.PI) * getAnimationConfig(settings.disappearSpeed, settings.fallingSpeed).EFFECTS.BOUNCE_EFFECT * CELL_SIZE;
         }
         
         const currentY = fromY + (toY - fromY) * easedProgress + bounceOffset;
@@ -232,10 +235,10 @@ const GameBoard: React.FC = () => {
 
     const interval = setInterval(() => {
       updateAnimations();
-    }, ANIMATION_CONFIG.ANIMATION_FRAME_RATE);
+    }, getAnimationConfig(settings.disappearSpeed, settings.fallingSpeed).ANIMATION_FRAME_RATE);
 
     return () => clearInterval(interval);
-  }, [animatingGems.length > 0, updateAnimations]);
+  }, [animatingGems.length > 0, updateAnimations, settings.disappearSpeed, settings.fallingSpeed]);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

@@ -3,6 +3,7 @@ import { useMatch3 } from '../lib/stores/useMatch3';
 import { useAudio } from '../lib/stores/useAudio';
 import GameBoard from './GameBoard';
 import ScoreDisplay from './ScoreDisplay';
+import { SettingsModal } from './SettingsModal';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
@@ -17,6 +18,7 @@ const Match3Game: React.FC = () => {
   
   const { playSuccess, playHit } = useAudio();
   const [showGameOver, setShowGameOver] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     initializeGame();
@@ -48,12 +50,19 @@ const Match3Game: React.FC = () => {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="order-2 lg:order-1">
           <ScoreDisplay score={score} />
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <Button 
               onClick={handleRestart}
               className="w-full bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600"
             >
               Restart Game
+            </Button>
+            <Button 
+              onClick={() => setShowSettings(true)}
+              variant="outline"
+              className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+            >
+              ⚙️ Настроить
             </Button>
           </div>
         </div>
@@ -88,6 +97,11 @@ const Match3Game: React.FC = () => {
           </Card>
         </div>
       )}
+
+      <SettingsModal 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 };

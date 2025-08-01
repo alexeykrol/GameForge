@@ -3,15 +3,27 @@
  * Все временные параметры в миллисекундах
  */
 
-export const ANIMATION_CONFIG = {
+// Базовые настройки анимации (модифицируются пользовательскими настройками)
+const BASE_DISAPPEAR_DURATION = 1200;  // Базовая продолжительность исчезновения
+const BASE_FALLING_DURATION = 1000;    // Базовая продолжительность падения
+
+// Мультипликаторы скорости: преобразует шкалу 1-5 в коэффициенты скорости
+const SPEED_MULTIPLIERS = {
+  1: 2.5,   // Очень медленно
+  2: 1.8,   // Медленно  
+  3: 1.0,   // Нормально
+  4: 0.6,   // Быстро
+  5: 0.3    // Очень быстро
+};
+
+// Функция для получения текущей конфигурации анимации на основе настроек
+export const getAnimationConfig = (disappearSpeed: number = 3, fallingSpeed: number = 3) => ({
+  // Продолжительность в миллисекундах (базовая продолжительность / мультипликатор скорости)
+  DISAPPEAR_DURATION: Math.round(BASE_DISAPPEAR_DURATION / SPEED_MULTIPLIERS[disappearSpeed as keyof typeof SPEED_MULTIPLIERS]),
+  FALLING_DURATION: Math.round(BASE_FALLING_DURATION / SPEED_MULTIPLIERS[fallingSpeed as keyof typeof SPEED_MULTIPLIERS]),
+  
   // Скорость обновления анимации (прогресс за кадр)
-  ANIMATION_SPEED: 0.025, // Увеличьте для более быстрой анимации, уменьшите для более медленной
-  
-  // Продолжительность анимации исчезновения совпавших камней
-  DISAPPEAR_DURATION: 1000, // 1 секунда
-  
-  // Продолжительность анимации падения камней
-  FALLING_DURATION: 800, // 0.8 секунды
+  ANIMATION_SPEED: 0.025,
   
   // Частота обновления анимации в миллисекундах
   ANIMATION_FRAME_RATE: 16, // ~60 FPS
@@ -27,7 +39,10 @@ export const ANIMATION_CONFIG = {
     // Эффект подпрыгивания при падении (0-1, где 0 = нет эффекта)
     BOUNCE_EFFECT: 0.1
   }
-};
+});
+
+// Конфигурация по умолчанию для обратной совместимости
+export const ANIMATION_CONFIG = getAnimationConfig();
 
 /**
  * Вспомогательные функции для работы с анимацией
