@@ -4,6 +4,15 @@
 
 This is a modern Match-3 puzzle game built as a full-stack web application. Players swap adjacent gems to create matches of 3 or more identical gems, earning points and clearing the board. The game features a React-based frontend with a Canvas-rendered game board, particle effects, and smooth animations, backed by an Express.js server with PostgreSQL database integration.
 
+## Recent Changes (August 2025)
+
+- **Animation System Overhaul**: Implemented proper Match-3 animation sequence based on reference game analysis
+- **Input Blocking**: Added `isProcessing` flag to prevent clicks during animations for smooth gameplay
+- **Sequential Animation Flow**: Created swap → disappear → fall → cascade cycle with proper timing
+- **Swap Animation**: Added visual gem swapping with automatic revert for invalid moves
+- **Settings Integration**: Connected user speed preferences (1-5) to animation timing configuration
+- **Git Integration**: Successfully pushed complete project to public GitHub repository
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
